@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { FileText, ImagePlus, Mic, Paperclip, Send } from "lucide-react";
+import { FileText, ImagePlus, Mic, Paperclip, Send, X } from "lucide-react";
 import { RichText } from "../components/RichText";
 import { readUpload } from "../readFile";
 import { answerQuestion, promptGroups, prompts } from "../replies";
@@ -8,6 +8,10 @@ import { jobs, jobById } from "../data";
 import { useApp } from "../store";
 
 const MAX_IMAGE_BYTES = 1024 * 1024;
+const MAX_FILE_BYTES = 15 * 1024 * 1024;
+
+type PendingImage = { name: string; data: string };
+type PendingFile = { name: string; text: string };
 
 type SpeechRec = {
   lang: string;
@@ -20,6 +24,9 @@ export function Assistant() {
   const [params] = useSearchParams();
   const { messages, chats, currentChatId, pushMessage, resumes, currentResumeId, newChat, selectChat, notify } = useApp();
   const [draft, setDraft] = useState("");
+  const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
+  const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
+  const [readingDoc, setReadingDoc] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -31,10 +38,11 @@ export function Assistant() {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length, currentChatId]);
 
-  function ask(text: string, image?: string) {
+  function sendMessage(text: string, image?: string, file?: PendingFile | null) {
     const content = text.trim();
-    if (!content && !image) return;
-    const body = content || "（发来一张图片）";
+    const fileBlock = file ? `【文档 ${file.name}】\n${file.text.slice(0, 1500)}` : "";
+    if (!content && !image && !fileBlock) return;
+    const body = [content, fileBlock].filter(Boolean).join("\n\n") || "（发来一张图片）";
     const resumeText = resume.sections.map((section) => `${section.title}：${section.after}`).join("\n");
     const reply = body.startsWith("请读取我的当前简历")
       ? `已读取「${resume.name}」，目标是${resume.target}。\n${resumeText.slice(0, 900)}`
@@ -45,6 +53,16 @@ export function Assistant() {
     pushMessage({ id: `u-${stamp}`, role: "user", text: body, image });
     pushMessage({ id: `a-${stamp + 1}`, role: "assistant", text: reply });
     setDraft("");
+  }
+
+  function sendPending() {
+    if (!draft.trim() && !pendingImage && !pendingFile) {
+      notify("请输入文字，或先添加图片、文档");
+      return;
+    }
+    sendMessage(draft, pendingImage?.data, pendingFile);
+    setPendingImage(null);
+    setPendingFile(null);
   }
 
   function listen() {
@@ -65,12 +83,28 @@ export function Assistant() {
   }
 
   async function onDoc(file: File) {
-    const text = await readUpload(file);
-    if (!text.trim()) {
-      notify("没有读出这份文件的正文");
+    if (file.size > MAX_FILE_BYTES) {
+      notify("文档不能超过 15MB");
       return;
     }
-    ask(`【文档 ${file.name}】\n${text.slice(0, 1500)}`);
+    if (readingDoc) {
+      notify("正在读取上一份文档，请稍候");
+      return;
+    }
+    setReadingDoc(true);
+    try {
+      const text = await readUpload(file);
+      if (!text.trim()) {
+        notify("没有读出这份文件的正文");
+        return;
+      }
+      setPendingFile({ name: file.name, text });
+      notify("文档已添加，可补充文字后手动发送");
+    } catch {
+      notify("这份文档没能读取");
+    } finally {
+      setReadingDoc(false);
+    }
   }
 
   function onImage(file: File) {
@@ -85,8 +119,14 @@ export function Assistant() {
     const reader = new FileReader();
     reader.onload = () => {
       const image = typeof reader.result === "string" ? reader.result : "";
-      if (image) ask(draft || `【图片】${file.name}`, image);
+      if (!image) {
+        notify("这张图片没能读取");
+        return;
+      }
+      setPendingImage({ name: file.name, data: image });
+      notify("图片已添加，可补充文字后手动发送");
     };
+    reader.onerror = () => notify("这张图片没能读取");
     reader.readAsDataURL(file);
   }
 
@@ -107,7 +147,7 @@ export function Assistant() {
               <span className="group-label">{group.group}</span>
               <div className="prompt-list">
                 {group.items.map((item) => (
-                  <button key={item.id} className="prompt-btn" type="button" onClick={() => ask(item.label)}>{item.label}</button>
+                  <button key={item.id} className="prompt-btn" type="button" onClick={() => sendMessage(item.label)}>{item.label}</button>
                 ))}
               </div>
             </div>
@@ -115,7 +155,7 @@ export function Assistant() {
         </aside>
         <section className="card glass-read assist-main">
           <div className="text-row">
-            <button className="quiet" type="button" onClick={() => ask(`请读取我的当前简历「${resume.name}」。\n${resume.sections.map((section) => section.title).join("、")}`)}>
+            <button className="quiet" type="button" onClick={() => sendMessage(`请读取我的当前简历「${resume.name}」。\n${resume.sections.map((section) => section.title).join("、")}`)}>
               <FileText size={14} /> 读取简历
             </button>
           </div>
@@ -128,12 +168,51 @@ export function Assistant() {
             ))}
             <div ref={endRef} />
           </div>
-          <form className="chat-form" onSubmit={(event) => { event.preventDefault(); ask(draft); }}>
-            <button className="quiet" type="button" aria-label="发图片" onClick={() => imageRef.current?.click()}><ImagePlus size={16} /></button>
-            <button className="quiet" type="button" aria-label="发文档" onClick={() => fileRef.current?.click()}><Paperclip size={16} /></button>
-            <button className="quiet" type="button" aria-label="语音转文字" onClick={listen}><Mic size={16} /></button>
-            <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="直接问，或发图片、文档、语音" aria-label="提问" />
-            <button className="plane-mark tip" type="submit" data-tip="发送" aria-label="发送"><Send size={16} /></button>
+          <form className="chat-form chat-form-rich" onSubmit={(event) => { event.preventDefault(); sendPending(); }}>
+            {pendingImage || pendingFile || readingDoc ? (
+              <div className="chat-attachments" aria-label="待发送附件">
+                {readingDoc ? <span className="chat-reading">正在读取文档…</span> : null}
+                {pendingImage ? (
+                  <div className="chat-attach image">
+                    <img src={pendingImage.data} alt="" />
+                    <div className="chat-attach-copy">
+                      <strong>{pendingImage.name}</strong>
+                      <span>图片 · 待发送</span>
+                    </div>
+                    <button className="chat-attach-x" type="button" aria-label="移除图片" onClick={() => setPendingImage(null)}><X size={13} /></button>
+                  </div>
+                ) : null}
+                {pendingFile ? (
+                  <div className="chat-attach file">
+                    <span className="chat-attach-icon" aria-hidden="true"><FileText size={16} /></span>
+                    <div className="chat-attach-copy">
+                      <strong>{pendingFile.name}</strong>
+                      <span>文档 · {pendingFile.text.length.toLocaleString()} 字 · 待发送</span>
+                      <p className="chat-attach-snippet">{pendingFile.text.replace(/\s+/g, " ").slice(0, 120)}{pendingFile.text.length > 120 ? "…" : ""}</p>
+                    </div>
+                    <button className="chat-attach-x" type="button" aria-label="移除文档" onClick={() => setPendingFile(null)}><X size={13} /></button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="chat-input-row">
+              <button className="quiet" type="button" aria-label="发图片" onClick={() => imageRef.current?.click()}><ImagePlus size={16} /></button>
+              <button className="quiet" type="button" aria-label="发文档" onClick={() => fileRef.current?.click()}><Paperclip size={16} /></button>
+              <button className="quiet" type="button" aria-label="语音转文字" onClick={listen}><Mic size={16} /></button>
+              <input
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    sendPending();
+                  }
+                }}
+                placeholder="先添加图片/文档，可补充文字后按 Enter 发送"
+                aria-label="提问"
+              />
+              <button className="plane-mark tip" type="submit" data-tip="发送" aria-label="发送"><Send size={16} /></button>
+            </div>
             <input ref={imageRef} hidden type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) onImage(file); }} />
             <input ref={fileRef} hidden type="file" accept=".txt,.md,.pdf,.docx,.doc" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void onDoc(file); }} />
           </form>

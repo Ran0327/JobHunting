@@ -439,7 +439,24 @@ a.side-user:hover, a.side-user.on { background: #eef2ff; }
 .bubble.user { margin-left: auto; background: #4338ca; color: #fff; }
 .bubble.assistant { background: #fff; color: var(--ink); border: 1px solid rgba(226, 232, 240, 0.95); }
 .chat-form, .sim-box { display: flex; gap: 8px; margin-top: 12px; }
+.chat-form-rich { flex-direction: column; }
+.chat-input-row { display: flex; gap: 8px; min-width: 0; }
+.chat-input-row > input { flex: 1; min-width: 0; }
 .chat-form input, .answer-box { background: #fff; border: 1px solid var(--line-strong); border-radius: 12px; padding: 10px 12px; }
+.chat-attachments { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+.chat-attach { position: relative; display: flex; align-items: center; gap: 8px; max-width: 100%; padding: 7px 10px; border-radius: 12px; border: 1px solid var(--line-strong); background: #fff; }
+.chat-attach.image { padding-left: 7px; }
+.chat-attach.image img { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; display: block; flex: none; }
+.chat-attach-icon { width: 38px; height: 38px; border-radius: 10px; background: #eef2ff; color: #4338ca; display: grid; place-items: center; flex: none; }
+.chat-attach.file { align-items: flex-start; max-width: min(100%, 520px); }
+.chat-attach.file .chat-attach-icon { margin-top: 2px; }
+.chat-attach-copy { min-width: 0; display: grid; gap: 2px; }
+.chat-attach-copy strong { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.chat-attach-copy span { font-size: 11px; color: var(--muted); }
+.chat-attach-snippet { margin: 0; max-width: 320px; font-size: 11px; line-height: 1.45; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.chat-attach-x { flex: none; width: 22px; height: 22px; border: 0; border-radius: 999px; background: #f1f5f9; color: #64748b; display: grid; place-items: center; cursor: pointer; }
+.chat-attach-x:hover { background: #e2e8f0; color: #334155; }
+.chat-reading { align-self: center; font-size: 12px; color: var(--muted); }
 .board { display: grid; grid-template-columns: repeat(5, minmax(200px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 6px; }
 .board > .column { min-width: 0; display: flex; flex-direction: column; max-height: 680px; overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; transition: background .16s ease, box-shadow .16s ease; }
 .board > .column h3 { position: sticky; top: 0; z-index: 1; background: rgba(255, 255, 255, 0.94); }
