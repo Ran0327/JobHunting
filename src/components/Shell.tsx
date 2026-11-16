@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Bookmark, Briefcase, FileText, Flag, LayoutDashboard, MessageSquare, Mic, RotateCcw, Search, Sparkles, UserRound, Users, X } from "lucide-react";
 import { ApplyDialogs } from "./ApplyDialogs";
@@ -14,6 +14,14 @@ const nav = [
   { to: "/favorites", label: "收藏", icon: Bookmark, end: false },
   { to: "/community", label: "社区", icon: Users, end: false },
 ];
+
+const petals = Array.from({ length: 18 }, (_, index) => ({
+  left: `${(index * 37 + 7) % 100}%`,
+  dx: `${((index * 29) % 160) - 80}px`,
+  duration: `${9 + ((index * 7) % 9)}s`,
+  delay: `${-((index * 11) % 15)}s`,
+  scale: 0.6 + ((index * 13) % 8) / 10,
+}));
 
 function heading(pathname: string) {
   if (pathname.startsWith("/jobs/")) return ["职位详情", "薪资、门槛、入口和风险放在同一页"];
@@ -60,6 +68,22 @@ export function Shell() {
 
   return (
     <div className="shell">
+      <div className="cloud-bg" aria-hidden="true" />
+      <div className="petal-field" aria-hidden="true">
+        {petals.map((petal, index) => (
+          <span
+            key={index}
+            className="petal"
+            style={{
+              left: petal.left,
+              "--dx": petal.dx,
+              animationDuration: petal.duration,
+              animationDelay: petal.delay,
+              scale: petal.scale,
+            } as CSSProperties}
+          />
+        ))}
+      </div>
       <div className="orb orb-a" />
       <div className="orb orb-b" />
       <div className="orb orb-c" />

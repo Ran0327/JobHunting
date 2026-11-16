@@ -17,12 +17,12 @@ function plain(text: string) {
 function ResumeThumb() {
   return (
     <svg className="hub-thumb" viewBox="0 0 112 80" aria-hidden="true">
-      <rect width="112" height="80" rx="10" fill="#e8f0ff" />
+      <rect width="112" height="80" rx="10" fill="#eaf7fd" />
       <rect x="18" y="10" width="76" height="60" rx="6" fill="#fff" />
-      <rect x="26" y="18" width="30" height="6" rx="3" fill="#c7d2fe" />
-      <rect x="26" y="30" width="60" height="4" rx="2" fill="#e2e8f0" />
-      <rect x="26" y="38" width="48" height="4" rx="2" fill="#e2e8f0" />
-      <rect x="26" y="46" width="54" height="4" rx="2" fill="#e2e8f0" />
+      <rect x="26" y="18" width="30" height="6" rx="3" fill="#a9d6e8" />
+      <rect x="26" y="30" width="60" height="4" rx="2" fill="#dbeaf1" />
+      <rect x="26" y="38" width="48" height="4" rx="2" fill="#dbeaf1" />
+      <rect x="26" y="46" width="54" height="4" rx="2" fill="#dbeaf1" />
     </svg>
   );
 }

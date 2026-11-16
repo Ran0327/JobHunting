@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, Download, FileText, Plus, Trash2, Upload, X } from "lucide-react";
+import { ChevronDown, Download, FileText, Plus, Save, Share2, Trash2, Upload, X } from "lucide-react";
 import { Highlight } from "../components/RichText";
 import type { ResumeWordHandle } from "../components/ResumeWordEditor";
 import { createId } from "../ids";
@@ -81,6 +81,7 @@ export function Resumes() {
     ? (editorText || reviewedDraft.body || reviewedDraft.sections.map((section) => section.after).join("\n"))
     : (reviewedDraft?.body || reviewedDraft?.sections.map((section) => `${section.title}\n${section.after}`).join("\n\n") || "");
   const review = reviewResume({ ...current, summary: current.summary, sections: [{ title: "工作经历", before: "", after: reviewText }] });
+  const wordCount = editorText.replace(/\s+/g, "").length;
 
   useEffect(() => {
     let stop = false;
@@ -330,7 +331,7 @@ export function Resumes() {
     <div className="resume-editor">
       <aside className="card glass-read">
         <div className="section-title">
-          <h2 className="with-icon"><FileText size={16} /> 我的简历</h2>
+          <h2 className="with-icon"><FileText size={16} /> 我的简历 <span className="resume-count">{resumes.length}</span></h2>
           <button className="quiet" type="button" aria-label="创建简历" onClick={() => setCreating((value) => !value)}><Plus size={16} /></button>
         </div>
         {creating ? (
@@ -349,23 +350,26 @@ export function Resumes() {
             <button key={item.id} type="button" className={`version${item.id === current.id ? " on" : ""}`} onClick={() => requestNav({ kind: "resume", id: item.id }, () => setResume(item.id))}>
               <strong>{item.name}</strong>
               <p className="hint">{item.target}</p>
+              <span className="version-meta">{item.drafts?.length ?? 0} 个版本</span>
             </button>
           ))}
         </div>
       </aside>
 
       <article className="resume-paper">
-        <div className="section-title">
-          <input className="name-input" value={current.name} aria-label="简历名称" onChange={(event) => updateResume(current.id, { name: event.target.value, target: event.target.value })} />
-          <div className="text-row">
+        <div className="section-title resume-doc-head">
+          <div className="resume-doc-title">
+            <input className="name-input" value={current.name} aria-label="简历名称" title="点击修改简历名称" onChange={(event) => updateResume(current.id, { name: event.target.value, target: event.target.value })} />
+          </div>
+          <div className="text-row resume-doc-tools">
             <DraftMenu
               drafts={drafts}
               value={activeDraft?.id ?? ""}
               onChange={(id) => requestNav({ kind: "draft", id }, () => setDraft(id))}
               onCreate={() => requestNav({ kind: "new" }, () => { void createVersion(); })}
             />
-            <button className="quiet" type="button" onClick={() => { setReviewDraftId(activeDraft?.id ?? ""); setReviewOpen(true); }}>AI评价</button>
-            <label className="quiet">
+            <button className="quiet resume-tool" type="button" onClick={() => { setReviewDraftId(activeDraft?.id ?? ""); setReviewOpen(true); }}>AI评价</button>
+            <label className="quiet resume-tool">
               <Upload size={14} /> {importing ? "导入中" : "导入"}
               <input hidden type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" disabled={importing} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) requestImport(file); }} />
             </label>
@@ -392,10 +396,17 @@ export function Resumes() {
           </div>
         )}
         <div className="resume-actions">
-          <button type="button" onClick={() => { void saveCurrent(); }} disabled={!activeDraft || saving}>{saving ? "保存中…" : "保存"}</button>
-          <button className="resume-delete" type="button" onClick={() => { deleting.current = false; setConfirmOpen(true); }} disabled={!activeDraft || saving}><Trash2 size={14} /> 删除</button>
-          <button type="button" onClick={() => { void exportWord(); }} disabled={!activeDraft}><Download size={14} /> 导出 Word</button>
-          <button type="button" onClick={() => { void shareCurrent(); }} disabled={!activeDraft}>一键分享</button>
+          <div className="resume-status" aria-live="polite">
+            <span className={`resume-save-dot${saving ? " is-saving" : dirty ? " is-dirty" : ""}`} aria-hidden="true" />
+            <span>{saving ? "正在保存…" : dirty ? "有未保存修改" : activeDraft ? `已保存 · ${activeDraft.savedAt}` : "暂无版本"}</span>
+            {wordCount ? <span className="resume-word-count">{wordCount.toLocaleString()} 字</span> : null}
+          </div>
+          <div className="resume-action-buttons">
+            <button className="resume-save" type="button" onClick={() => { void saveCurrent(); }} disabled={!activeDraft || saving}><Save size={14} /> {saving ? "保存中…" : "保存"}</button>
+            <button className="resume-delete" type="button" onClick={() => { deleting.current = false; setConfirmOpen(true); }} disabled={!activeDraft || saving}><Trash2 size={14} /> 删除</button>
+            <button type="button" onClick={() => { void exportWord(); }} disabled={!activeDraft}><Download size={14} /> 导出 Word</button>
+            <button type="button" onClick={() => { void shareCurrent(); }} disabled={!activeDraft}><Share2 size={14} /> 一键分享</button>
+          </div>
         </div>
       </article>
 

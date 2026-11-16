@@ -208,7 +208,7 @@ function JobPosting({ job }: { job: Job }) {
 
 function MatchRing({ value }: { value: number }) {
   return (
-    <div className="ring" style={{ background: `conic-gradient(#4338ca ${value * 3.6}deg, rgba(15,23,42,.08) 0)` }}>
+    <div className="ring" style={{ background: `conic-gradient(#6fb3d0 ${value * 3.6}deg, rgba(111,179,208,.16) 0)` }}>
       <span className="num">{value}</span>
     </div>
   );
